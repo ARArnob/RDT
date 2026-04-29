@@ -1,13 +1,6 @@
 # Reliable Data Transfer Protocol
 ### Go-Back-N Implementation over UDP
-**Green University of Bangladesh | CSE318 – Computer Networking Lab**
-**Section: 232_D7 | Spring 2026**
 
-| Name | ID |
-|------|-----|
-| Rounak Hasan Raju | 232002242 |
-
----
 
 ## Project Overview
 
