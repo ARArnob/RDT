@@ -53,12 +53,16 @@ public class RdtWebServer {
                 exchange.sendResponseHeaders(405, -1);
                 return;
             }
+            
             String path = exchange.getRequestURI().getPath();
+            // Route root to index.html and strip the leading slash
             if (path.equals("/")) {
-                path = "/index.html";
+                path = "index.html"; 
+            } else if (path.startsWith("/")) {
+                path = path.substring(1); 
             }
             
-            File file = new File("src" + path);
+            File file = new File(path);
             if (!file.exists()) {
                 exchange.sendResponseHeaders(404, -1);
                 return;
