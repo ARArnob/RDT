@@ -39,28 +39,24 @@ RDT_Project/
 
 The project is orchestrated via a zero-dependency Web Server.
 
-### Step 1: Compile the Project
-You can use the provided script or compile manually.
-
-**Using the script (Linux/Mac/Git Bash):**
+### Method 1: Using the Script (Linux/Mac/Git Bash)
+The provided script compiles the project and starts the server automatically.
 ```bash
 ./compile.sh
 ```
 
-**Manual compilation (Windows/All):**
-```bash
-cd src
-javac *.java
-```
+### Method 2: Manual (Windows/All)
+1. **Compile the Project**:
+   ```bash
+   cd src
+   javac *.java
+   ```
+2. **Start the Web Server**:
+   ```bash
+   java RdtWebServer
+   ```
 
-### Step 2: Start the Web Server
-Run the `RdtWebServer` class.
-```bash
-cd src
-java RdtWebServer
-```
-
-### Step 3: Access the Dashboard
+### Access the Dashboard
 Open your browser and navigate to **`http://localhost:8080`**.
 
 ---

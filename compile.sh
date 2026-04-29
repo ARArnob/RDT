@@ -1,3 +1,9 @@
 #!/bin/bash
 echo "Compiling RDT Protocol..."
-cd src && javac *.java && echo "✔ Compilation successful!" || echo "✘ Compilation failed."
+if cd src && javac *.java; then
+    echo "✔ Compilation successful!"
+    echo "Starting RDT Web Server..."
+    java RdtWebServer
+else
+    echo "✘ Compilation failed."
+fi
