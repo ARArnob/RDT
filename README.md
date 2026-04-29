@@ -1,11 +1,11 @@
 # Reliable Data Transfer Protocol
-### Go-Back-N Implementation over UDP
-
+### Go-Back-N Implementation over UDP with SSE Web Dashboard
 
 ## Project Overview
 
-This project implements a **Reliable Data Transfer (RDT) Protocol** using the **Go-Back-N (GBN)** algorithm on top of UDP sockets in Java. Since UDP does not provide reliability by default, all reliability mechanisms are built from scratch:
+This project implements a **Reliable Data Transfer (RDT) Protocol** using the **Go-Back-N (GBN)** algorithm on top of UDP sockets in Java. It features a modern **Web Dashboard** powered by Server-Sent Events (SSE) for real-time telemetry, allowing you to observe and control the simulation visually.
 
+Since UDP does not provide reliability by default, all reliability mechanisms are built from scratch:
 - ✅ Sequence numbering
 - ✅ Acknowledgment (ACK) based confirmation
 - ✅ Timeout-based retransmission
@@ -24,11 +24,12 @@ RDT_Project/
 │   ├── Config.java           # All tunable parameters (window, timeout, loss %)
 │   ├── Packet.java           # Packet structure: seq num, data, CRC32 checksum
 │   ├── NetworkSimulator.java # Random drop + manual drop + corruption injection
-│   ├── Sender.java           # GBN Sender: sliding window, timer, retransmit
-│   └── Receiver.java         # GBN Receiver: in-order accept, ACK/NAK sending
-├── compile.sh                # Compile all Java files
-├── run_receiver.sh           # Start the receiver
-├── run_sender.sh             # Start the sender (with optional custom message)
+│   ├── Sender.java           # GBN Sender logic
+│   ├── Receiver.java         # GBN Receiver logic
+│   ├── ProtocolLogger.java   # Central logger for broadcasting events via SSE
+│   ├── RdtWebServer.java     # Zero-dependency HTTP & SSE Server (Entry Point)
+│   └── index.html            # Web Dashboard UI
+├── compile.sh                # Script to compile all Java files
 └── README.md                 # This file
 ```
 
@@ -36,31 +37,51 @@ RDT_Project/
 
 ## How to Run
 
-### Step 1 – Compile
+The project is orchestrated via a zero-dependency Web Server.
+
+### Step 1: Compile the Project
+You can use the provided script or compile manually.
+
+**Using the script (Linux/Mac/Git Bash):**
+```bash
+./compile.sh
+```
+
+**Manual compilation (Windows/All):**
 ```bash
 cd src
 javac *.java
 ```
 
-### Step 2 – Start the Receiver (Terminal 1)
+### Step 2: Start the Web Server
+Run the `RdtWebServer` class.
 ```bash
-java Receiver
+cd src
+java RdtWebServer
 ```
-Receiver starts listening on **port 9001**.
 
-### Step 3 – Start the Sender (Terminal 2)
-```bash
-# Default message:
-java Sender
-
-# Custom message:
-java Sender Hello this is my custom message for transfer
-```
-Sender starts sending on **port 9000** (ACK listener) → **9001** (data destination).
+### Step 3: Access the Dashboard
+Open your browser and navigate to **`http://localhost:8080`**.
 
 ---
 
-## Configuration (Config.java)
+## Web Interface Features
+
+From the web dashboard, you can interact with the protocol simulation in real-time:
+
+- **Start Transfer**: Type a custom message and click "Start Transfer". The server will instantiate the Sender and begin the GBN protocol.
+- **Force Drop**: Click the "⚡ Force Drop" button to arm a manual packet drop. The next packet (either Data or ACK) will be dropped by the simulator, allowing you to observe retransmission behavior on demand.
+- **Real-time Logs**: Watch the protocol state machine live. Logs are color-coded by source:
+  - **`SND`**: Sender events (Sent, Retransmit, ACK received)
+  - **`RCV`**: Receiver events (Incoming, Accepted, Sent ACK/NAK)
+  - **`SIM`**: Network Simulator events (Random Loss, Corruption, Manual Drop)
+  - **`SYS`**: System events
+
+---
+
+## Configuration (`Config.java`)
+
+You can tune the protocol behavior by editing `src/Config.java`.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -91,38 +112,6 @@ Sender Window (N=4):
 5. Receiver discards out-of-order packets
 6. Process continues until all packets ACKed
 ```
-
-### Key Events Visible in Console:
-| Symbol | Meaning |
-|--------|---------|
-| `→ Sent PKT(seq=N)` | Packet sent successfully |
-| `↩ RETRANSMIT` | Packet being retransmitted |
-| `✔ ACK(seq=N)` | ACK received, window advances |
-| `⏰ TIMEOUT!` | Timer expired, retransmit all |
-| `✘ CORRUPTED` | CRC mismatch, NAK sent |
-| `⚠ Out-of-order` | GBN receiver discards, re-ACKs |
-| `🚫 MANUAL DROP` | User manually dropped a packet |
-| `✗ RANDOM LOSS` | Simulator randomly dropped |
-
----
-
-## Manual Drop (Live Demo)
-
-While either terminal is running:
-- **Press ENTER** to manually drop the next outgoing packet
-- You'll see `[SIM] ⚡ Manual drop armed!` followed by `[SIM] 🚫 MANUAL DROP`
-- This lets you demonstrate retransmission **on demand** during viva/demo
-
----
-
-## Simulation Design
-
-The `NetworkSimulator` class provides two layers:
-1. **Random Loss** – configurable probability (default 25%)
-2. **Manual Loss** – press ENTER to arm a drop
-3. **Corruption** – randomly flips CRC32 checksum (default 10%)
-
-Both the **sender's data packets** and the **receiver's ACK packets** pass through the simulator — simulating bidirectional network unreliability.
 
 ---
 
