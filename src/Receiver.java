@@ -16,14 +16,12 @@ public class Receiver {
         senderAddress = InetAddress.getByName(Config.HOST);
         sim = simulator;
 
-        ProtocolLogger.log("RCV", "Receiver ready on port " + Config.RECEIVER_PORT + " | Expecting seq=" + rcvBase, "info");
+        ProtocolLogger.logEvent("RCV", "Receiver ready on port " + Config.RECEIVER_PORT + " | Expecting seq=" + rcvBase, "info");
     }
 
-    // ── Main receive loop ────────────────────────────────────────────────
     public void start() {
         try {
             while (running) {
-                // ── Receive raw datagram ─────────────────────────────────────
                 byte[] buf = new byte[4096];
                 DatagramPacket dp = new DatagramPacket(buf, buf.length);
                 socket.receive(dp);
@@ -31,39 +29,35 @@ public class Receiver {
                 Packet pkt = deserialize(dp.getData(), dp.getLength());
                 if (pkt == null) continue;
 
-                ProtocolLogger.log("RCV", "← Incoming: " + pkt, "info");
+                ProtocolLogger.logEvent("RCV", "Incoming: " + pkt, "info");
 
-                // ── Check for termination signal ─────────────────────────────
                 if (!pkt.isAck() && !pkt.isNak() && "__END__".equals(pkt.getData())) {
-                    ProtocolLogger.log("RCV", "✔ Transfer complete! Full message: \"" + fullMessage.toString().trim() + "\"", "success");
-                    sendAck(pkt.getSequenceNumber()); // ACK the END signal
-                    continue; // Keep running for future messages
+                    ProtocolLogger.logEvent("RCV", "Transfer complete! Full message: " + fullMessage.toString().trim(), "success");
+                    sendAck(pkt.getSequenceNumber());
+                    continue; 
                 }
 
-                // ── Corruption check ─────────────────────────────────────────
                 if (pkt.isCorrupted()) {
-                    ProtocolLogger.log("RCV", "✘ Packet CORRUPTED! Sending NAK for seq=" + pkt.getSequenceNumber(), "error");
+                    ProtocolLogger.logEvent("RCV", "Packet CORRUPTED! Sending NAK for seq=" + pkt.getSequenceNumber(), "error");
                     sendNak(pkt.getSequenceNumber());
                     continue;
                 }
 
-                // ── In-order packet? ─────────────────────────────────────────
                 if (pkt.getSequenceNumber() == rcvBase) {
                     fullMessage.append(pkt.getData()).append(" ");
-                    ProtocolLogger.log("RCV", "✔ Accepted seq=" + rcvBase + " | data=\"" + pkt.getData() + "\"", "success");
+                    ProtocolLogger.logEvent("RCV", "Accepted seq=" + rcvBase + " | data=" + pkt.getData(), "success");
                     rcvBase = (rcvBase + 1) % Config.MAX_SEQ_NUM;
                     sendAck(pkt.getSequenceNumber());
 
                 } else {
-                    // Out-of-order or duplicate → re-send last good ACK
                     int lastGoodAck = (rcvBase - 1 + Config.MAX_SEQ_NUM) % Config.MAX_SEQ_NUM;
-                    ProtocolLogger.log("RCV", "⚠ Out-of-order/duplicate seq=" + pkt.getSequenceNumber() + " | expected=" + rcvBase + " | Re-ACK seq=" + lastGoodAck, "warning");
+                    ProtocolLogger.logEvent("RCV", "Out-of-order/duplicate seq=" + pkt.getSequenceNumber() + " | expected=" + rcvBase + " | Re-ACK seq=" + lastGoodAck, "warning");
                     sendAck(lastGoodAck);
                 }
             }
         } catch (Exception e) {
             if (running) {
-                ProtocolLogger.log("RCV", "Error in receiver loop: " + e.getMessage(), "error");
+                ProtocolLogger.logEvent("RCV", "Error in receiver loop: " + e.getMessage(), "error");
             }
         } finally {
             if (socket != null && !socket.isClosed()) {
@@ -79,21 +73,18 @@ public class Receiver {
         }
     }
 
-    // ── Send ACK ─────────────────────────────────────────────────────────
     private void sendAck(int seqNum) throws Exception {
         Packet ackPkt = new Packet(seqNum, true, false);
         String label = "ACK(seq=" + seqNum + ")";
 
-        // Simulate ACK loss
         if (sim.shouldDrop(label)) return;
 
         byte[] data = serialize(ackPkt);
         DatagramPacket dp = new DatagramPacket(data, data.length, senderAddress, Config.SENDER_PORT);
         socket.send(dp);
-        ProtocolLogger.log("RCV", "→ Sent " + label, "info");
+        ProtocolLogger.logEvent("RCV", "Sent " + label, "info");
     }
 
-    // ── Send NAK ─────────────────────────────────────────────────────────
     private void sendNak(int seqNum) throws Exception {
         Packet nakPkt = new Packet(seqNum, false, true);
         String label = "NAK(seq=" + seqNum + ")";
@@ -103,10 +94,9 @@ public class Receiver {
         byte[] data = serialize(nakPkt);
         DatagramPacket dp = new DatagramPacket(data, data.length, senderAddress, Config.SENDER_PORT);
         socket.send(dp);
-        ProtocolLogger.log("RCV", "→ Sent " + label, "warning");
+        ProtocolLogger.logEvent("RCV", "Sent " + label, "warning");
     }
 
-    // ── Serialization helpers ─────────────────────────────────────────────
     private byte[] serialize(Packet pkt) throws Exception {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -121,7 +111,7 @@ public class Receiver {
             ObjectInputStream ois = new ObjectInputStream(bis);
             return (Packet) ois.readObject();
         } catch (Exception e) {
-            ProtocolLogger.log("RCV", "Failed to deserialize packet.", "error");
+            ProtocolLogger.logEvent("RCV", "Failed to deserialize packet.", "error");
             return null;
         }
     }
